@@ -44,6 +44,15 @@ export const sessionStore = {
         }
     },
 
+    moveSession: (sessionId: string, newParentId: string | null) => {
+        const sessions = sessionStore.getSessions();
+        const session = sessions.find(s => s.id === sessionId);
+        if (session) {
+            session.parentId = newParentId;
+            sessionStore.saveSessions(sessions);
+        }
+    },
+
     // Helper to build tree from flat list (if we stored flat) 
     // But we will store flat list with parentId for simplicity in management, 
     // and build tree for display.

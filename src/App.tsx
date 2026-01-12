@@ -175,6 +175,11 @@ function App() {
     }
   };
 
+  const handleMoveSession = (sessionId: string, newParentId: string | null) => {
+    sessionStore.moveSession(sessionId, newParentId);
+    refreshSessions();
+  };
+
   return (
     <div className="flex h-screen bg-gray-950 text-gray-300 font-sans overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 via-transparent to-purple-900/10 pointer-events-none" />
@@ -254,6 +259,7 @@ function App() {
               onNewFolder={handleNewFolderInFolder}
               onDuplicate={handleDuplicateSession}
               onRename={handleOpenRename}
+              onMoveSession={handleMoveSession}
             />
           </div>
 

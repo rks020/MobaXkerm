@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronRight, ChevronDown, Folder, Terminal, Server, MoreHorizontal, Trash2, Edit, Copy, Plus, FolderPlus } from 'lucide-react';
+import { ChevronDown, Folder, Terminal, Server, Trash2, Copy, Plus, FolderPlus, Edit } from 'lucide-react';
 import { SavedSession } from '../../lib/sessionStore';
 
 interface SessionTreeProps {
@@ -10,12 +10,15 @@ interface SessionTreeProps {
     onNewFolder?: (parentId: string) => void;
     onDuplicate?: (session: SavedSession) => void;
     onRename?: (session: SavedSession) => void;
+    onMoveSession?: (sessionId: string, newParentId: string | null) => void;
     level?: number;
 }
 
-export function SessionTree({ sessions, onConnect, onDelete, onNewConnection, onNewFolder, onDuplicate, onRename, level = 0 }: SessionTreeProps) {
+export function SessionTree({ sessions, onConnect, onDelete, onNewConnection, onNewFolder, onDuplicate, onRename, onMoveSession, level = 0 }: SessionTreeProps) {
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, node: SavedSession } | null>(null);
+    const [draggedId, setDraggedId] = useState<string | null>(null);
+    const [dragOverId, setDragOverId] = useState<string | null>(null);
 
     // Close context menu on click outside
     useEffect(() => {
@@ -39,6 +42,41 @@ export function SessionTree({ sessions, onConnect, onDelete, onNewConnection, on
         e.preventDefault();
         e.stopPropagation();
         setContextMenu({ x: e.clientX, y: e.clientY, node });
+    };
+
+    // Drag and drop handlers
+    const handleDragStart = (e: React.DragEvent, node: SavedSession) => {
+        if (node.type === 'folder') return; // Don't allow dragging folders
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('sessionId', node.id);
+        setDraggedId(node.id);
+    };
+
+    const handleDragOver = (e: React.DragEvent, node: SavedSession) => {
+        if (node.type !== 'folder') return; // Only allow dropping on folders
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        setDragOverId(node.id);
+    };
+
+    const handleDragLeave = () => {
+        setDragOverId(null);
+    };
+
+    const handleDrop = (e: React.DragEvent, targetFolder: SavedSession) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const sessionId = e.dataTransfer.getData('sessionId');
+        if (sessionId && onMoveSession && targetFolder.type === 'folder') {
+            onMoveSession(sessionId, targetFolder.id);
+        }
+        setDraggedId(null);
+        setDragOverId(null);
+    };
+
+    const handleDragEnd = () => {
+        setDraggedId(null);
+        setDragOverId(null);
     };
 
     if (sessions.length === 0 && level === 0) {
@@ -137,10 +175,13 @@ export function SessionTree({ sessions, onConnect, onDelete, onNewConnection, on
                 return (
                     <div key={node.id}>
                         <div
+                            draggable={!isFolder}
                             className={`
                                 group flex items-center gap-2 py-1.5 px-2 rounded-lg cursor-pointer transition-colors
                                 hover:bg-white/5 text-gray-400 hover:text-gray-200
                                 ${contextMenu?.node.id === node.id ? 'bg-white/10 text-white' : ''}
+                                ${draggedId === node.id ? 'opacity-50' : ''}
+                                ${dragOverId === node.id ? 'bg-blue-500/20 ring-1 ring-blue-500/50' : ''}
                             `}
                             style={{ paddingLeft: `${level * 12 + 8}px` }}
                             onClick={(e) => {
@@ -152,6 +193,11 @@ export function SessionTree({ sessions, onConnect, onDelete, onNewConnection, on
                                 if (isFolder) toggleFolder(node.id, e);
                                 else onConnect(node);
                             }}
+                            onDragStart={(e) => handleDragStart(e, node)}
+                            onDragOver={(e) => handleDragOver(e, node)}
+                            onDragLeave={handleDragLeave}
+                            onDrop={(e) => handleDrop(e, node)}
+                            onDragEnd={handleDragEnd}
                         >
                             {/* Icon / Expander */}
                             <div className="flex items-center justify-center w-4 h-4 shrink-0 transition-transform duration-200">
@@ -201,6 +247,7 @@ export function SessionTree({ sessions, onConnect, onDelete, onNewConnection, on
                                         onNewFolder={onNewFolder}
                                         onDuplicate={onDuplicate}
                                         onRename={onRename}
+                                        onMoveSession={onMoveSession}
                                         level={level + 1}
                                     />
                                 ) : (
