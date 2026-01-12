@@ -17,6 +17,7 @@ export function SFTPBrowser({ sessionId, isActive }: SFTPBrowserProps) {
     const [files, setFiles] = useState<FileEntry[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [pathInput, setPathInput] = useState('.');
 
     useEffect(() => {
         if (!isActive || !sessionId) return;
@@ -45,6 +46,7 @@ export function SFTPBrowser({ sessionId, isActive }: SFTPBrowserProps) {
             }));
             setLoading(false);
             setCwd(path);
+            setPathInput(path);
             cleanup();
         };
 
@@ -84,6 +86,13 @@ export function SFTPBrowser({ sessionId, isActive }: SFTPBrowserProps) {
         parts.pop();
         const newPath = parts.join('/') || '/';
         loadPath(newPath);
+    };
+
+    const handlePathSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (pathInput.trim()) {
+            loadPath(pathInput);
+        }
     };
 
     const handleDragOver = (e: React.DragEvent) => {
@@ -133,15 +142,16 @@ export function SFTPBrowser({ sessionId, isActive }: SFTPBrowserProps) {
                 >
                     <ArrowUp size={14} />
                 </button>
-                <div className="flex-1 bg-black/20 rounded px-2 py-1 border border-white/5 flex items-center">
+                <form onSubmit={handlePathSubmit} className="flex-1 bg-black/20 rounded px-2 py-1 border border-white/5 flex items-center">
                     <Folder size={12} className="text-gray-500 mr-2" />
                     <input
                         type="text"
-                        value={cwd}
-                        readOnly
-                        className="flex-1 bg-transparent border-none focus:outline-none text-gray-400 truncate"
+                        value={pathInput}
+                        onChange={(e) => setPathInput(e.target.value)}
+                        className="flex-1 bg-transparent border-none focus:outline-none text-blue-400 truncate"
+                        placeholder="Enter path and press Enter"
                     />
-                </div>
+                </form>
             </div>
 
             {/* File List */}
