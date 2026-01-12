@@ -27,6 +27,7 @@ function App() {
   const [targetParentId, setTargetParentId] = useState<string | undefined>(undefined);
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [renameSessionId, setRenameSessionId] = useState<string | null>(null);
+  const [editingSession, setEditingSession] = useState<SavedSession | undefined>(undefined);
   const [tabContextMenu, setTabContextMenu] = useState<{ x: number, y: number, sessionId: string } | null>(null);
 
   // Saved Sessions Logic
@@ -192,6 +193,11 @@ function App() {
     setIsRenameModalOpen(true);
   };
 
+  const handleEditSession = (session: SavedSession) => {
+    setEditingSession(session);
+    setIsModalOpen(true);
+  };
+
   const handleRenameSession = (newName: string) => {
     if (renameSessionId) {
       sessionStore.renameSession(renameSessionId, newName);
@@ -256,9 +262,14 @@ function App() {
 
       <NewSessionModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingSession(undefined); // Reset edit state
+        }}
         onConnect={handleNewSession}
-        onSave={refreshSessions}
+        onSave={() => setRefreshTrigger(prev => prev + 1)}
+        initialParentId={targetParentId}
+        initialData={editingSession}
       />
 
       <FolderModal
@@ -351,6 +362,7 @@ function App() {
               onNewFolder={handleNewFolderInFolder}
               onDuplicate={handleDuplicateSession}
               onRename={handleOpenRename}
+              onEdit={handleEditSession}
               onMoveSession={handleMoveSession}
             />
           </div>

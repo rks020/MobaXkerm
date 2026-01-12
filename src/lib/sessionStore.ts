@@ -44,6 +44,15 @@ export const sessionStore = {
         }
     },
 
+    updateSession: (updatedSession: SavedSession) => {
+        const sessions = sessionStore.getSessions();
+        const index = sessions.findIndex(s => s.id === updatedSession.id);
+        if (index !== -1) {
+            sessions[index] = updatedSession;
+            sessionStore.saveSessions(sessions);
+        }
+    },
+
     moveSession: (sessionId: string, newParentId: string | null) => {
         const sessions = sessionStore.getSessions();
         const session = sessions.find(s => s.id === sessionId);

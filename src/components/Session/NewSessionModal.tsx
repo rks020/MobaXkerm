@@ -18,9 +18,10 @@ interface NewSessionModalProps {
     onConnect: (config: SessionConfig) => void;
     onSave?: () => void; // Callback to refresh parent list
     initialParentId?: string;
+    initialData?: SavedSession;
 }
 
-export function NewSessionModal({ isOpen, onClose, onConnect, onSave, initialParentId }: NewSessionModalProps) {
+export function NewSessionModal({ isOpen, onClose, onConnect, onSave, initialParentId, initialData }: NewSessionModalProps) {
     const [activeTab, setActiveTab] = useState<'ssh' | 'local'>('ssh');
     const [host, setHost] = useState('');
     const [username, setUsername] = useState('root');
@@ -35,14 +36,35 @@ export function NewSessionModal({ isOpen, onClose, onConnect, onSave, initialPar
             // Load folders for dropdown
             const sessions = sessionStore.getSessions();
             setFolders(sessions.filter(s => s.type === 'folder'));
-            // Set initial parent if provided
-            if (initialParentId) {
-                setParentId(initialParentId);
+
+            if (initialData) {
+                // Edit Mode
+                setActiveTab(initialData.type as 'ssh' | 'local');
+                setSessionName(initialData.name);
+                setParentId(initialData.parentId || '');
+
+                if (initialData.config) {
+                    setHost(initialData.config.host || '');
+                    setUsername(initialData.config.username || 'root');
+                    setPort(initialData.config.port || 22);
+                    setPassword(initialData.config.password || '');
+                }
             } else {
-                setParentId('');
+                // New Session Mode
+                setSessionName('');
+                setHost('');
+                setUsername('root');
+                setPort(22);
+                setPassword('');
+                // Set initial parent if provided
+                if (initialParentId) {
+                    setParentId(initialParentId);
+                } else {
+                    setParentId('');
+                }
             }
         }
-    }, [isOpen, initialParentId]);
+    }, [isOpen, initialParentId, initialData]);
 
     if (!isOpen) return null;
 
@@ -63,19 +85,39 @@ export function NewSessionModal({ isOpen, onClose, onConnect, onSave, initialPar
 
     const handleSave = () => {
         const config = getConfig();
-        const newSession: SavedSession = {
-            id: crypto.randomUUID(),
-            name: config.name,
-            type: config.type,
-            parentId: config.parentId || null,
-            config: {
-                host: config.host,
-                username: config.username,
-                port: config.port,
-                password: config.password
-            }
-        };
-        sessionStore.addSession(newSession);
+
+        if (initialData) {
+            // Update existing
+            const updated: SavedSession = {
+                ...initialData,
+                name: config.name,
+                type: config.type,
+                parentId: config.parentId || null,
+                config: {
+                    host: config.host,
+                    username: config.username,
+                    port: config.port,
+                    password: config.password
+                }
+            };
+            sessionStore.updateSession(updated);
+        } else {
+            // Create new
+            const newSession: SavedSession = {
+                id: crypto.randomUUID(),
+                name: config.name,
+                type: config.type,
+                parentId: config.parentId || null,
+                config: {
+                    host: config.host,
+                    username: config.username,
+                    port: config.port,
+                    password: config.password
+                }
+            };
+            sessionStore.addSession(newSession);
+        }
+
         if (onSave) onSave();
         onClose();
     };
@@ -87,7 +129,7 @@ export function NewSessionModal({ isOpen, onClose, onConnect, onSave, initialPar
                 {/* Header */}
                 <div className="relative px-6 pt-6 pb-2 flex justify-between items-center z-10">
                     <div>
-                        <h2 className="text-lg font-semibold text-white tracking-tight">New Session</h2>
+                        <h2 className="text-lg font-semibold text-white tracking-tight">{initialData ? 'Edit Session' : 'New Session'}</h2>
                         <p className="text-xs text-gray-500 mt-0.5">Configure your connection details</p>
                     </div>
                     <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors p-1 hover:bg-white/10 rounded-lg">

@@ -10,11 +10,12 @@ interface SessionTreeProps {
     onNewFolder?: (parentId: string) => void;
     onDuplicate?: (session: SavedSession) => void;
     onRename?: (session: SavedSession) => void;
+    onEdit?: (session: SavedSession) => void;
     onMoveSession?: (sessionId: string, newParentId: string | null) => void;
     level?: number;
 }
 
-export function SessionTree({ sessions, onConnect, onDelete, onNewConnection, onNewFolder, onDuplicate, onRename, onMoveSession, level = 0 }: SessionTreeProps) {
+export function SessionTree({ sessions, onConnect, onDelete, onNewConnection, onNewFolder, onDuplicate, onRename, onEdit, onMoveSession, level = 0 }: SessionTreeProps) {
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, node: SavedSession } | null>(null);
     const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -136,6 +137,15 @@ export function SessionTree({ sessions, onConnect, onDelete, onNewConnection, on
                             </button>
                             <button
                                 onClick={() => {
+                                    if (onEdit) onEdit(contextMenu.node);
+                                    setContextMenu(null);
+                                }}
+                                className="w-full text-left px-3 py-2 hover:bg-white/10 flex items-center gap-2"
+                            >
+                                <Edit size={14} className="text-orange-400" /> Edit
+                            </button>
+                            <button
+                                onClick={() => {
                                     if (onDuplicate) onDuplicate(contextMenu.node);
                                     setContextMenu(null);
                                 }}
@@ -247,6 +257,7 @@ export function SessionTree({ sessions, onConnect, onDelete, onNewConnection, on
                                         onNewFolder={onNewFolder}
                                         onDuplicate={onDuplicate}
                                         onRename={onRename}
+                                        onEdit={onEdit}
                                         onMoveSession={onMoveSession}
                                         level={level + 1}
                                     />
