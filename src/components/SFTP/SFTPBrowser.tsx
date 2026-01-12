@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Folder, File, ArrowUp, RefreshCw } from 'lucide-react';
+import { Folder, File, ArrowUp, RefreshCw, Copy, Download } from 'lucide-react';
 
 interface FileEntry {
     name: string;
@@ -19,6 +19,7 @@ export function SFTPBrowser({ sessionId, isActive, onRequestSync }: SFTPBrowserP
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [pathInput, setPathInput] = useState('.');
+    const [contextMenu, setContextMenu] = useState<{ x: number, y: number, file: FileEntry } | null>(null);
 
     useEffect(() => {
         if (!isActive || !sessionId) return;
@@ -115,6 +116,31 @@ export function SFTPBrowser({ sessionId, isActive, onRequestSync }: SFTPBrowserP
         if (onRequestSync) {
             onRequestSync(sessionId);
         }
+    };
+
+    // Close context menu on click
+    useEffect(() => {
+        const handleClick = () => setContextMenu(null);
+        if (contextMenu) {
+            document.addEventListener('click', handleClick);
+        }
+        return () => document.removeEventListener('click', handleClick);
+    }, [contextMenu]);
+
+    const handleDownload = (file: FileEntry) => {
+        const ipc = (window as any).ipcRenderer;
+        const filePath = cwd === '.' ? file.name : `${cwd}/${file.name}`;
+
+        // Request download
+        ipc.send('sftp-download', { id: sessionId, remotePath: filePath, fileName: file.name });
+
+        setContextMenu(null);
+    };
+
+    const handleCopyPath = (file: FileEntry) => {
+        const filePath = cwd === '.' ? file.name : `${cwd}/${file.name}`;
+        navigator.clipboard.writeText(filePath);
+        setContextMenu(null);
     };
 
     const handleDragOver = (e: React.DragEvent) => {
@@ -214,6 +240,12 @@ export function SFTPBrowser({ sessionId, isActive, onRequestSync }: SFTPBrowserP
                                     key={idx}
                                     className="group flex items-center gap-3 px-3 py-2 rounded-md hover:bg-white/5 cursor-pointer whitespace-nowrap transition-colors select-none"
                                     onDoubleClick={() => isDir && navigate(file.name)}
+                                    onContextMenu={(e) => {
+                                        if (!isDir) {
+                                            e.preventDefault();
+                                            setContextMenu({ x: e.clientX, y: e.clientY, file });
+                                        }
+                                    }}
                                 >
                                     <div className="min-w-[16px]">
                                         {isDir
@@ -229,6 +261,28 @@ export function SFTPBrowser({ sessionId, isActive, onRequestSync }: SFTPBrowserP
                     </div>
                 )}
             </div>
+
+            {/* Context Menu */}
+            {contextMenu && (
+                <div
+                    className="fixed bg-[#1c1c1c] border border-white/10 rounded-lg shadow-2xl py-1 z-50 min-w-[180px]"
+                    style={{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <button
+                        onClick={() => handleDownload(contextMenu.file)}
+                        className="w-full text-left px-3 py-2 text-xs hover:bg-white/10 flex items-center gap-2 text-gray-300"
+                    >
+                        <Download size={14} className="text-blue-400" /> Download
+                    </button>
+                    <button
+                        onClick={() => handleCopyPath(contextMenu.file)}
+                        className="w-full text-left px-3 py-2 text-xs hover:bg-white/10 flex items-center gap-2 text-gray-300"
+                    >
+                        <Copy size={14} className="text-yellow-400" /> Copy Path
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

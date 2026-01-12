@@ -390,3 +390,45 @@ ipcMain.on('sftp-upload', (event, { id, localPath, remotePath }) => {
   });
 });
 
+// Download file from server to local machine
+ipcMain.on('sftp-download', (event, { id, remotePath, fileName }) => {
+  const conn = sshSessions.get(id);
+  if (!conn) {
+    console.error('[SFTP] Download: Connection not found');
+    return;
+  }
+
+  console.log(`[SFTP] Downloading ${remotePath} as ${fileName}`);
+
+  conn.sftp((err: Error | undefined, sftp: any) => {
+    if (err) {
+      console.error('[SFTP] Download init error:', err);
+      return;
+    }
+
+    // Use dialog to select save location
+    const { dialog } = require('electron');
+    const os = require('os');
+
+    dialog.showSaveDialog({
+      title: 'Save File',
+      defaultPath: path.join(os.homedir(), 'Downloads', fileName),
+      properties: ['createDirectory', 'showOverwriteConfirmation']
+    }).then((result: { canceled: boolean, filePath?: string }) => {
+      if (result.canceled || !result.filePath) {
+        sftp.end();
+        return;
+      }
+
+      sftp.fastGet(remotePath, result.filePath, (err: Error | undefined) => {
+        if (err) {
+          console.error('[SFTP] Download error:', err);
+        } else {
+          console.log('[SFTP] Download success');
+        }
+        sftp.end();
+      });
+    });
+  });
+});
+

@@ -226,6 +226,27 @@ ipcMain.on("ssh-disconnect", (_event, id) => {
     sshSessions.delete(id);
   }
 });
+ipcMain.on("ssh-get-cwd", (event, id) => {
+  const conn = sshSessions.get(id);
+  if (!conn) {
+    event.sender.send(`ssh-cwd-${id}`, { error: "Connection not found" });
+    return;
+  }
+  conn.exec("pwd", (err, stream) => {
+    if (err) {
+      event.sender.send(`ssh-cwd-${id}`, { error: err.message });
+      return;
+    }
+    let output = "";
+    stream.on("data", (data) => {
+      output += data.toString();
+    });
+    stream.on("close", () => {
+      const cwd = output.trim();
+      event.sender.send(`ssh-cwd-${id}`, { cwd });
+    });
+  });
+});
 ipcMain.on("sftp-list", (event, { id, path: path2 }) => {
   const conn = sshSessions.get(id);
   if (!conn) {
