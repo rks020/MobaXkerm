@@ -78,19 +78,32 @@ function App() {
   const [isResizing, setIsResizing] = useState<'sidebar' | 'sftp' | null>(null);
 
   useEffect(() => {
+    let rafId: number | null = null;
+
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
 
-      if (isResizing === 'sidebar') {
-        const newWidth = Math.max(200, Math.min(500, e.clientX));
-        setSidebarWidth(newWidth);
-      } else if (isResizing === 'sftp') {
-        const newWidth = Math.max(200, Math.min(600, window.innerWidth - e.clientX));
-        setSftpWidth(newWidth);
-      }
+      // Cancel previous animation frame if it exists
+      if (rafId) cancelAnimationFrame(rafId);
+
+      // Use requestAnimationFrame for smooth updates
+      rafId = requestAnimationFrame(() => {
+        if (isResizing === 'sidebar') {
+          const newWidth = Math.max(200, Math.min(500, e.clientX));
+          setSidebarWidth(newWidth);
+        } else if (isResizing === 'sftp') {
+          const newWidth = Math.max(200, Math.min(600, window.innerWidth - e.clientX));
+          setSftpWidth(newWidth);
+        }
+        rafId = null;
+      });
     };
 
     const handleMouseUp = () => {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
       setIsResizing(null);
     };
 
@@ -102,6 +115,7 @@ function App() {
     }
 
     return () => {
+      if (rafId) cancelAnimationFrame(rafId);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
       document.body.style.cursor = '';
@@ -214,7 +228,7 @@ function App() {
       {/* Sidebar */}
       <aside
         style={{ width: `${sidebarWidth}px` }}
-        className="bg-gray-900/90 backdrop-blur-xl border-r border-white/5 flex flex-col relative z-10 transition-all duration-300"
+        className="bg-gray-900/90 backdrop-blur-xl border-r border-white/5 flex flex-col relative z-10"
       >
         {/* Header */}
         <div className="h-14 flex items-center pl-20 pr-5 border-b border-white/5 drag-region select-none relative">
@@ -386,7 +400,7 @@ function App() {
           {/* SFTP Pane */}
           <aside
             style={{ width: `${sftpWidth}px` }}
-            className="bg-[#0e0e11] border-l border-white/5 flex flex-col transition-all duration-300"
+            className="bg-[#0e0e11] border-l border-white/5 flex flex-col"
           >
             <div className="h-10 flex items-center px-4 border-b border-white/5 bg-[#18181b]/50">
               <Folder size={14} className="text-blue-400 mr-2" />
