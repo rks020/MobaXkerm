@@ -290,6 +290,33 @@ ipcMain.on('ssh-disconnect', (_event, id) => {
   }
 });
 
+// Get current working directory from SSH session
+ipcMain.on('ssh-get-cwd', (event, id) => {
+  const conn = sshSessions.get(id);
+  if (!conn) {
+    event.sender.send(`ssh-cwd-${id}`, { error: 'Connection not found' });
+    return;
+  }
+
+  // Execute pwd command to get current directory
+  conn.exec('pwd', (err: Error | undefined, stream: any) => {
+    if (err) {
+      event.sender.send(`ssh-cwd-${id}`, { error: err.message });
+      return;
+    }
+
+    let output = '';
+    stream.on('data', (data: Buffer) => {
+      output += data.toString();
+    });
+
+    stream.on('close', () => {
+      const cwd = output.trim();
+      event.sender.send(`ssh-cwd-${id}`, { cwd });
+    });
+  });
+});
+
 ipcMain.on('sftp-list', (event, { id, path }) => {
   const conn = sshSessions.get(id);
   if (!conn) {

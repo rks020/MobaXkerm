@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Folder, File, ArrowUp } from 'lucide-react';
+import { Folder, File, ArrowUp, RefreshCw } from 'lucide-react';
 
 interface FileEntry {
     name: string;
@@ -10,9 +10,10 @@ interface FileEntry {
 interface SFTPBrowserProps {
     sessionId: string;
     isActive: boolean;
+    onRequestSync?: (sessionId: string) => void;
 }
 
-export function SFTPBrowser({ sessionId, isActive }: SFTPBrowserProps) {
+export function SFTPBrowser({ sessionId, isActive, onRequestSync }: SFTPBrowserProps) {
     const [cwd, setCwd] = useState('.');
     const [files, setFiles] = useState<FileEntry[]>([]);
     const [loading, setLoading] = useState(false);
@@ -29,6 +30,21 @@ export function SFTPBrowser({ sessionId, isActive }: SFTPBrowserProps) {
 
         return () => clearTimeout(timer);
     }, [sessionId, isActive]);
+
+    // Listen for sync events from terminal directory changes
+    useEffect(() => {
+        if (!sessionId) return;
+
+        const handleSyncEvent = ((event: CustomEvent) => {
+            const { path } = event.detail;
+            if (path) {
+                loadPath(path);
+            }
+        }) as EventListener;
+
+        window.addEventListener(`sftp-sync-${sessionId}`, handleSyncEvent);
+        return () => window.removeEventListener(`sftp-sync-${sessionId}`, handleSyncEvent);
+    }, [sessionId]);
 
     const loadPath = (path: string) => {
         setLoading(true);
@@ -95,6 +111,12 @@ export function SFTPBrowser({ sessionId, isActive }: SFTPBrowserProps) {
         }
     };
 
+    const handleSync = () => {
+        if (onRequestSync) {
+            onRequestSync(sessionId);
+        }
+    };
+
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -152,6 +174,13 @@ export function SFTPBrowser({ sessionId, isActive }: SFTPBrowserProps) {
                         placeholder="Enter path and press Enter"
                     />
                 </form>
+                <button
+                    onClick={handleSync}
+                    className="p-1 hover:bg-white/10 rounded-md text-gray-400 hover:text-emerald-400 transition-colors"
+                    title="Sync with Terminal Directory"
+                >
+                    <RefreshCw size={14} />
+                </button>
             </div>
 
             {/* File List */}

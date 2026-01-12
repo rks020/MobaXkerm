@@ -231,6 +231,25 @@ function App() {
     setTabContextMenu(null);
   };
 
+  const handleSyncPath = (sessionId: string) => {
+    const ipc = (window as any).ipcRenderer;
+
+    // Request current directory from SSH session
+    ipc.send('ssh-get-cwd', sessionId);
+
+    // Listen for response
+    const handleCwd = (_event: any, data: { cwd?: string, error?: string }) => {
+      if (data.cwd) {
+        // Update SFTP to this path (trigger through a custom event or state)
+        // For now, we'll emit a custom event that SFTPBrowser can listen to
+        window.dispatchEvent(new CustomEvent(`sftp-sync-${sessionId}`, { detail: { path: data.cwd } }));
+      }
+      ipc.removeAllListeners(`ssh-cwd-${sessionId}`);
+    };
+
+    ipc.on(`ssh-cwd-${sessionId}`, handleCwd);
+  };
+
   return (
     <div className="flex h-screen bg-gray-950 text-gray-300 font-sans overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 via-transparent to-purple-900/10 pointer-events-none" />
@@ -475,7 +494,7 @@ function App() {
                 const isSSH = activeSession?.config?.type === 'ssh';
 
                 if (activeSession && isSSH) {
-                  return <SFTPBrowser sessionId={activeSession.id} isActive={true} />;
+                  return <SFTPBrowser sessionId={activeSession.id} isActive={true} onRequestSync={handleSyncPath} />;
                 }
                 return (
                   <div className="h-full flex flex-col items-center justify-center p-6 text-center text-gray-600">
