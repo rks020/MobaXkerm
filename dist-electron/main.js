@@ -182,8 +182,7 @@ ipcMain.on("ssh-connect", (event, { id, host, port, username, password }) => {
     // Send keepalive every 10s
     compress: false,
     // Disable compression to avoid 'Bad packet length'
-    debug: (msg) => console.log(`[SSH DEBUG ${id}]`, msg),
-    // Debug logging
+    // debug: (msg) => console.log(`[SSH DEBUG ${id}]`, msg), // Debug logging disabled for performance
     algorithms: {
       kex: [
         "diffie-hellman-group1-sha1",

@@ -21,10 +21,10 @@ export function SFTPBrowser({ sessionId, isActive }: SFTPBrowserProps) {
     useEffect(() => {
         if (!isActive || !sessionId) return;
 
-        // Wait 1 second for SSH to be fully ready before requesting SFTP
+        // Wait 2 seconds for SSH to be fully ready before requesting SFTP
         const timer = setTimeout(() => {
             loadPath('.');
-        }, 1000);
+        }, 2000);
 
         return () => clearTimeout(timer);
     }, [sessionId, isActive]);

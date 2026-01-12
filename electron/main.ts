@@ -293,16 +293,22 @@ ipcMain.on('ssh-disconnect', (_event, id) => {
 ipcMain.on('sftp-list', (event, { id, path }) => {
   const conn = sshSessions.get(id);
   if (!conn) {
-    event.sender.send(`sftp-error-${id}`, 'Connection not found');
+    console.error(`[SFTP] Connection not found for ${id}`);
+    event.sender.send(`sftp-error-${id}`, 'SSH connection not found. Please reconnect.');
     return;
   }
+
+  console.log(`[SFTP] Requesting file list for ${id} at path: ${path || '.'}`);
 
   conn.sftp((err: Error | undefined, sftp: any) => {
     if (err) {
       console.error(`[SFTP] Init error for ${id}:`, err);
-      event.sender.send(`sftp-error-${id}`, err.message);
+      event.sender.send(`sftp-error-${id}`, `SFTP initialization failed: ${err.message}`);
       return;
     }
+
+    console.log(`[SFTP] SFTP channel established for ${id}`);
+
 
     sftp.readdir(path || '.', (err: Error | undefined, list: any[]) => {
       if (err) {
