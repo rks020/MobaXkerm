@@ -240,7 +240,7 @@ ipcMain.on('ssh-connect', (event, { id, host, port, username, password }) => {
     password,
     tryKeyboard: true, // Try keyboard-interactive if password fails
     readyTimeout: 30000,
-    keepaliveInterval: 10000, // Send keepalive every 10s
+    // keepaliveInterval: 10000, // Disabled - causing keepalive timeouts
     compress: false, // Disable compression to avoid 'Bad packet length'
     // debug: (msg) => console.log(`[SSH DEBUG ${id}]`, msg), // Debug logging disabled for performance
     algorithms: {

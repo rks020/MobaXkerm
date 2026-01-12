@@ -1,4 +1,4 @@
-import { Terminal, Folder, Settings, Plus, X, Globe, Server, Command, FolderPlus } from 'lucide-react';
+import { Terminal, Folder, Settings, Plus, X, Globe, Server, Command, FolderPlus, RefreshCw, Copy } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { TerminalComponent } from './components/Terminal/TerminalComponent';
 import { NewSessionModal } from './components/Session/NewSessionModal';
@@ -27,6 +27,7 @@ function App() {
   const [targetParentId, setTargetParentId] = useState<string | undefined>(undefined);
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [renameSessionId, setRenameSessionId] = useState<string | null>(null);
+  const [tabContextMenu, setTabContextMenu] = useState<{ x: number, y: number, sessionId: string } | null>(null);
 
   // Saved Sessions Logic
   const [savedSessions, setSavedSessions] = useState<SavedSession[]>([]);
@@ -123,6 +124,15 @@ function App() {
     };
   }, [isResizing]);
 
+  // Close tab context menu on click
+  useEffect(() => {
+    const handleClick = () => setTabContextMenu(null);
+    if (tabContextMenu) {
+      document.addEventListener('click', handleClick);
+    }
+    return () => document.removeEventListener('click', handleClick);
+  }, [tabContextMenu]);
+
   const handleNewSession = (config: any, savedId?: string) => {
     const newSession = {
       id: `session-${Date.now()}`,
@@ -194,6 +204,33 @@ function App() {
     refreshSessions();
   };
 
+  const handleReconnectTab = (sessionId: string) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+
+    // Close existing terminal
+    const ipc = (window as any).ipcRenderer;
+    if (session.config?.type === 'ssh') {
+      ipc.send('ssh-disconnect', sessionId);
+    } else if (session.config?.type === 'local') {
+      ipc.send('terminal-input', sessionId, '\x03'); // Send Ctrl+C
+    }
+
+    // Create new session with same config
+    handleNewSession(session.config, session.savedId);
+
+    // Close old session
+    setSessions(prev => prev.filter(s => s.id !== sessionId));
+    setTabContextMenu(null);
+  };
+
+  const handleDuplicateTab = (sessionId: string) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    handleNewSession(session.config, session.savedId);
+    setTabContextMenu(null);
+  };
+
   return (
     <div className="flex h-screen bg-gray-950 text-gray-300 font-sans overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 via-transparent to-purple-900/10 pointer-events-none" />
@@ -224,6 +261,28 @@ function App() {
         onRename={handleRenameSession}
         currentName={sessionStore.getSessions().find(s => s.id === renameSessionId)?.name || ''}
       />
+
+      {/* Tab Context Menu */}
+      {tabContextMenu && (
+        <div
+          className="fixed bg-[#1c1c1c] border border-white/10 rounded-lg shadow-2xl py-1 z-50 min-w-[160px]"
+          style={{ left: `${tabContextMenu.x}px`, top: `${tabContextMenu.y}px` }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => handleReconnectTab(tabContextMenu.sessionId)}
+            className="w-full text-left px-3 py-2 text-xs hover:bg-white/10 flex items-center gap-2 text-gray-300"
+          >
+            <RefreshCw size={14} className="text-emerald-400" /> Reconnect
+          </button>
+          <button
+            onClick={() => handleDuplicateTab(tabContextMenu.sessionId)}
+            className="w-full text-left px-3 py-2 text-xs hover:bg-white/10 flex items-center gap-2 text-gray-300"
+          >
+            <Copy size={14} className="text-yellow-400" /> Duplicate
+          </button>
+        </div>
+      )}
 
       {/* Sidebar */}
       <aside
@@ -338,6 +397,10 @@ function App() {
             <div
               key={session.id}
               onClick={() => setActiveTabId(session.id)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setTabContextMenu({ x: e.clientX, y: e.clientY, sessionId: session.id });
+              }}
               className={`
                 group max-w-[240px] flex-1 min-w-[140px] h-full rounded-t-lg flex items-center px-4 text-xs font-medium border-t border-x relative cursor-pointer select-none transition-all
                 ${activeTabId === session.id
