@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Folder, File, ArrowUp, RefreshCw, Copy, Download } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Folder, File, ArrowUp, RefreshCw, Copy, Download, Upload } from 'lucide-react';
 
 interface FileEntry {
     name: string;
@@ -20,6 +20,7 @@ export function SFTPBrowser({ sessionId, isActive, onRequestSync }: SFTPBrowserP
     const [error, setError] = useState<string | null>(null);
     const [pathInput, setPathInput] = useState('.');
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, file: FileEntry } | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (!isActive || !sessionId) return;
@@ -143,6 +144,10 @@ export function SFTPBrowser({ sessionId, isActive, onRequestSync }: SFTPBrowserP
         setContextMenu(null);
     };
 
+    const handleUploadClick = () => {
+        fileInputRef.current?.click();
+    };
+
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -207,6 +212,19 @@ export function SFTPBrowser({ sessionId, isActive, onRequestSync }: SFTPBrowserP
                 >
                     <RefreshCw size={14} />
                 </button>
+                <button
+                    onClick={handleUploadClick}
+                    className="p-1 hover:bg-white/10 rounded-md text-gray-400 hover:text-blue-400 transition-colors"
+                    title="Upload File"
+                >
+                    <Upload size={14} />
+                </button>
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={handleDrop as any}
+                />
             </div>
 
             {/* File List */}

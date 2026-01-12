@@ -306,6 +306,40 @@ ipcMain.on("sftp-upload", (event, { id, localPath, remotePath }) => {
     });
   });
 });
+ipcMain.on("sftp-download", (event, { id, remotePath, fileName }) => {
+  const conn = sshSessions.get(id);
+  if (!conn) {
+    console.error("[SFTP] Download: Connection not found");
+    return;
+  }
+  console.log(`[SFTP] Downloading ${remotePath} as ${fileName}`);
+  conn.sftp((err, sftp) => {
+    if (err) {
+      console.error("[SFTP] Download init error:", err);
+      return;
+    }
+    const { dialog } = require$1("electron");
+    const os2 = require$1("os");
+    dialog.showSaveDialog({
+      title: "Save File",
+      defaultPath: path.join(os2.homedir(), "Downloads", fileName),
+      properties: ["createDirectory", "showOverwriteConfirmation"]
+    }).then((result) => {
+      if (result.canceled || !result.filePath) {
+        sftp.end();
+        return;
+      }
+      sftp.fastGet(remotePath, result.filePath, (err2) => {
+        if (err2) {
+          console.error("[SFTP] Download error:", err2);
+        } else {
+          console.log("[SFTP] Download success");
+        }
+        sftp.end();
+      });
+    });
+  });
+});
 export {
   MAIN_DIST,
   RENDERER_DIST,

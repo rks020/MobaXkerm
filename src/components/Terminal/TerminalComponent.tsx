@@ -3,6 +3,7 @@ import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
 import 'xterm/css/xterm.css';
+import { Copy } from 'lucide-react';
 
 // Aliases removed
 // const XTerm = Terminal;
@@ -31,6 +32,7 @@ export function TerminalComponent({ id = 'default', config, onTitleChange }: Ter
     const pidRef = useRef<number | null>(null);
 
     const [connState, setConnState] = useState<{ status: 'connecting' | 'connected' | 'error', message?: string }>({ status: 'connecting' });
+    const [contextMenu, setContextMenu] = useState<{ x: number, y: number, selection: string } | null>(null);
 
     useEffect(() => {
         if (!terminalRef.current) return;
@@ -61,6 +63,15 @@ export function TerminalComponent({ id = 'default', config, onTitleChange }: Ter
 
         term.open(terminalRef.current);
         fitAddon.fit();
+
+        // Add context menu for copy/paste
+        terminalRef.current.addEventListener('contextmenu', (e: MouseEvent) => {
+            e.preventDefault();
+            const selection = term.getSelection();
+            if (selection) {
+                setContextMenu({ x: e.clientX, y: e.clientY, selection });
+            }
+        });
 
         xtermRef.current = term;
         fitAddonRef.current = fitAddon;
@@ -172,6 +183,33 @@ export function TerminalComponent({ id = 'default', config, onTitleChange }: Ter
         }
     }, [config]); // Re-run if config changes (though usually creates new instance)
 
+    // Close context menu on click
+    useEffect(() => {
+        const handleClick = () => setContextMenu(null);
+        if (contextMenu) {
+            document.addEventListener('click', handleClick);
+        }
+        return () => document.removeEventListener('click', handleClick);
+    }, [contextMenu]);
+
+    const handleCopyAndPaste = () => {
+        if (!contextMenu || !xtermRef.current) return;
+
+        // Copy to clipboard
+        navigator.clipboard.writeText(contextMenu.selection);
+
+        // Paste to terminal (write to command line)
+        xtermRef.current.paste(contextMenu.selection);
+
+        setContextMenu(null);
+    };
+
+    const handleCopyOnly = () => {
+        if (!contextMenu) return;
+        navigator.clipboard.writeText(contextMenu.selection);
+        setContextMenu(null);
+    };
+
     return (
         <div className="relative w-full h-full bg-[#09090b]">
             <div className="w-full h-full" ref={terminalRef} />
@@ -224,6 +262,28 @@ export function TerminalComponent({ id = 'default', config, onTitleChange }: Ter
                         className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-gray-300 transition-colors border border-white/5"
                     >
                         Retry
+                    </button>
+                </div>
+            )}
+
+            {/* Context Menu */}
+            {contextMenu && (
+                <div
+                    className="fixed bg-[#1c1c1c] border border-white/10 rounded-lg shadow-2xl py-1 z-50 min-w-[180px]"
+                    style={{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <button
+                        onClick={handleCopyAndPaste}
+                        className="w-full text-left px-3 py-2 text-xs hover:bg-white/10 flex items-center gap-2 text-gray-300"
+                    >
+                        <Copy size={14} className="text-blue-400" /> Copy & Paste
+                    </button>
+                    <button
+                        onClick={handleCopyOnly}
+                        className="w-full text-left px-3 py-2 text-xs hover:bg-white/10 flex items-center gap-2 text-gray-300"
+                    >
+                        <Copy size={14} className="text-yellow-400" /> Copy Only
                     </button>
                 </div>
             )}
